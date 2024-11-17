@@ -11,15 +11,21 @@ function handleError(error) {
 
 export async function uploadFile(formData: FormData) {
   const supabase = await createServerSupabaseClient();
-  const file = formData.get("file") as File;
 
-  const { data, error } = await supabase.storage
-    .from(process.env.NEXT_PUBLIC_STORAGE_BUCKET)
-    .upload(file.name, file, { upsert: true });
+  const files = Array.from(formData.entries()).map(
+    // 순회하며 key,value return
+    ([name, file]) => file as File
+  );
 
-  handleError(error);
+  const results = await Promise.all(
+    files.map((file) =>
+      supabase.storage
+        .from(process.env.NEXT_PUBLIC_STORAGE_BUCKET)
+        .upload(file.name, file, { upsert: true })
+    )
+  );
 
-  return data;
+  return results;
 }
 
 export async function searchFiles(search: string = "") {
@@ -30,6 +36,19 @@ export async function searchFiles(search: string = "") {
     .list(null, {
       search,
     });
+
+  handleError(error);
+
+  return data;
+}
+
+export async function deleteFile(fileName: string) {
+  const supabase = await createServerSupabaseClient();
+  // cache 무효화
+
+  const { data, error } = await supabase.storage
+    .from(process.env.NEXT_PUBLIC_STORAGE_BUCKET)
+    .remove([fileName]);
 
   handleError(error);
 
